@@ -4,7 +4,7 @@ FastAPI server for executing Claude Code commands via HTTP API.
 This server provides REST endpoints to:
 - Execute Claude Code commands
 - Stream responses in real-time
-- Handle authentication via API keys
+- Handle authentication via OAuth 2.0 / JWT tokens
 """
 
 import asyncio
@@ -16,18 +16,30 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Depends, Header, status
+from fastapi import FastAPI, HTTPException, Depends, Security, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import uvicorn
+import jwt
+from jwt import PyJWKClient
+import requests
 
 
 # Configuration
-API_KEY = os.getenv("CLAUDE_API_KEY", "")
 CLAUDE_CODE_PATH = os.getenv("CLAUDE_CODE_PATH", "claude")
 DEFAULT_WORKING_DIR = os.getenv("DEFAULT_WORKING_DIR", os.getcwd())
 ENABLE_AUTH = os.getenv("ENABLE_AUTH", "true").lower() == "true"
+
+# OAuth Configuration
+OAUTH_ISSUER = os.getenv("OAUTH_ISSUER", "")  # e.g., "https://accounts.google.com"
+OAUTH_AUDIENCE = os.getenv("OAUTH_AUDIENCE", "")  # Your API audience/client ID
+OAUTH_JWKS_URL = os.getenv("OAUTH_JWKS_URL", "")  # e.g., "https://www.googleapis.com/oauth2/v3/certs"
+OAUTH_ALGORITHMS = os.getenv("OAUTH_ALGORITHMS", "RS256").split(",")  # Comma-separated algorithms
+
+# Security scheme
+security = HTTPBearer(auto_error=False)
 
 
 # Request/Response Models
@@ -75,25 +87,126 @@ app.add_middleware(
 )
 
 
+# OAuth Token Models
+class TokenData(BaseModel):
+    """Decoded token data."""
+    sub: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    scopes: List[str] = []
+
+
+# Initialize JWKS client if URL is provided
+jwks_client = None
+if OAUTH_JWKS_URL:
+    try:
+        jwks_client = PyJWKClient(OAUTH_JWKS_URL)
+    except Exception as e:
+        print(f"Warning: Failed to initialize JWKS client: {e}")
+
+
 # Authentication
-async def verify_api_key(x_api_key: Optional[str] = Header(None)):
-    """Verify API key from request headers."""
+async def verify_oauth_token(
+    credentials: HTTPAuthorizationCredentials = Security(security)
+) -> TokenData:
+    """
+    Verify OAuth 2.0 JWT token from Authorization header.
+
+    Supports:
+    - JWT token validation with JWKS
+    - Common OAuth providers (Google, GitHub, Auth0, etc.)
+    - Custom OAuth servers
+
+    Args:
+        credentials: Bearer token from Authorization header
+
+    Returns:
+        TokenData with user information
+
+    Raises:
+        HTTPException: If token is invalid or missing
+    """
     if not ENABLE_AUTH:
-        return True
+        # Auth disabled, return empty token data
+        return TokenData()
 
-    if not API_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Server authentication not configured"
-        )
-
-    if not x_api_key or x_api_key != API_KEY:
+    if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing API key"
+            detail="Missing authorization token",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return True
+    token = credentials.credentials
+
+    try:
+        # Decode and verify JWT token
+        if jwks_client:
+            # Use JWKS for public key retrieval
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            payload = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=OAUTH_ALGORITHMS,
+                audience=OAUTH_AUDIENCE if OAUTH_AUDIENCE else None,
+                issuer=OAUTH_ISSUER if OAUTH_ISSUER else None,
+                options={
+                    "verify_signature": True,
+                    "verify_exp": True,
+                    "verify_aud": bool(OAUTH_AUDIENCE),
+                    "verify_iss": bool(OAUTH_ISSUER),
+                }
+            )
+        else:
+            # Decode without verification (for development/testing)
+            # WARNING: This is insecure for production
+            payload = jwt.decode(
+                token,
+                options={"verify_signature": False},
+                algorithms=OAUTH_ALGORITHMS
+            )
+            print("Warning: Token validation without signature verification!")
+
+        # Extract user information
+        token_data = TokenData(
+            sub=payload.get("sub"),
+            email=payload.get("email"),
+            name=payload.get("name"),
+            scopes=payload.get("scope", "").split() if "scope" in payload else []
+        )
+
+        return token_data
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidAudienceError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token audience",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidIssuerError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token issuer",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid token: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Token validation failed: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 # Utility functions
@@ -265,12 +378,12 @@ async def health_check():
 @app.post("/api/execute", response_model=ExecuteResponse)
 async def execute(
     request: ExecuteRequest,
-    authenticated: bool = Depends(verify_api_key)
+    token_data: TokenData = Depends(verify_oauth_token)
 ):
     """
     Execute a Claude Code command and return the complete response.
 
-    Requires X-API-Key header for authentication (if ENABLE_AUTH=true).
+    Requires Authorization: Bearer <token> header for authentication (if ENABLE_AUTH=true).
     """
     if request.stream:
         raise HTTPException(
@@ -291,12 +404,12 @@ async def execute(
 @app.post("/api/execute/stream")
 async def execute_stream(
     request: ExecuteRequest,
-    authenticated: bool = Depends(verify_api_key)
+    token_data: TokenData = Depends(verify_oauth_token)
 ):
     """
     Execute a Claude Code command and stream the response in real-time.
 
-    Requires X-API-Key header for authentication (if ENABLE_AUTH=true).
+    Requires Authorization: Bearer <token> header for authentication (if ENABLE_AUTH=true).
     Returns a text/event-stream response.
     """
     return StreamingResponse(
@@ -330,7 +443,11 @@ if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")
 
     print(f"Starting Claude Code API Server on {host}:{port}")
-    print(f"Authentication: {'enabled' if ENABLE_AUTH else 'disabled'}")
+    print(f"Authentication: {'OAuth 2.0 / JWT' if ENABLE_AUTH else 'disabled'}")
+    if ENABLE_AUTH:
+        print(f"OAuth Issuer: {OAUTH_ISSUER or 'Not configured'}")
+        print(f"OAuth Audience: {OAUTH_AUDIENCE or 'Not configured'}")
+        print(f"JWKS URL: {OAUTH_JWKS_URL or 'Not configured (insecure!)'}")
     print(f"Claude Code path: {CLAUDE_CODE_PATH}")
     print(f"Default working directory: {DEFAULT_WORKING_DIR}")
     print(f"\nAPI Documentation: http://{host}:{port}/docs")

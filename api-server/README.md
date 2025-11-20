@@ -6,10 +6,11 @@ A FastAPI-based HTTP server that provides REST API endpoints for executing Claud
 
 - 🚀 **REST API**: Execute Claude Code via HTTP requests
 - 📡 **Streaming Support**: Real-time streaming of Claude Code output
-- 🔐 **Authentication**: API key-based authentication
+- 🔐 **OAuth 2.0 Authentication**: Secure JWT token validation
 - ⚙️ **Configurable**: Environment-based configuration
 - 📝 **OpenAPI Docs**: Auto-generated API documentation
 - 🎯 **Type Safe**: Full Pydantic model validation
+- 🔑 **Multiple OAuth Providers**: Google, Auth0, Azure AD, Okta, GitHub, and custom providers
 
 ## Quick Start
 
@@ -40,8 +41,11 @@ Edit `.env` with your settings:
 # Enable/disable authentication
 ENABLE_AUTH=true
 
-# Set your API key (required if ENABLE_AUTH=true)
-CLAUDE_API_KEY=your-secret-api-key-here
+# OAuth 2.0 Configuration
+OAUTH_ISSUER=https://accounts.google.com
+OAUTH_AUDIENCE=your-client-id.apps.googleusercontent.com
+OAUTH_JWKS_URL=https://www.googleapis.com/oauth2/v3/certs
+OAUTH_ALGORITHMS=RS256
 
 # Server settings
 HOST=0.0.0.0
@@ -51,6 +55,8 @@ PORT=8000
 CLAUDE_CODE_PATH=claude
 DEFAULT_WORKING_DIR=/path/to/your/project
 ```
+
+**📖 For detailed OAuth setup instructions, see [OAUTH_SETUP.md](OAUTH_SETUP.md)**
 
 ### 3. Run the Server
 
@@ -98,7 +104,7 @@ Response:
 Execute a Claude Code command and get the complete response after execution finishes.
 
 **Headers:**
-- `X-API-Key`: Your API key (required if authentication is enabled)
+- `Authorization`: Bearer <your-jwt-token> (required if authentication is enabled)
 - `Content-Type`: application/json
 
 **Request Body:**
@@ -127,7 +133,7 @@ Execute a Claude Code command and get the complete response after execution fini
 
 ```bash
 curl -X POST http://localhost:8000/api/execute \
-  -H "X-API-Key: your-secret-api-key-here" \
+  -H "Authorization: Bearer your-jwt-token-here" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Create a hello.py file that prints Hello World",
@@ -154,7 +160,7 @@ curl -X POST http://localhost:8000/api/execute \
 Execute a Claude Code command and stream the response in real-time.
 
 **Headers:**
-- `X-API-Key`: Your API key (required if authentication is enabled)
+- `Authorization`: Bearer <your-jwt-token> (required if authentication is enabled)
 - `Content-Type`: application/json
 
 **Request Body:**
@@ -170,7 +176,7 @@ Execute a Claude Code command and stream the response in real-time.
 
 ```bash
 curl -X POST http://localhost:8000/api/execute/stream \
-  -H "X-API-Key: your-secret-api-key-here" \
+  -H "Authorization: Bearer your-jwt-token-here" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "List all Python files in the project",
@@ -188,10 +194,10 @@ Response will be streamed as `text/event-stream`.
 import requests
 
 API_URL = "http://localhost:8000"
-API_KEY = "your-secret-api-key-here"
+OAUTH_TOKEN = "your-jwt-token-here"  # Get this from your OAuth provider
 
 headers = {
-    "X-API-Key": API_KEY,
+    "Authorization": f"Bearer {OAUTH_TOKEN}",
     "Content-Type": "application/json"
 }
 
@@ -217,10 +223,10 @@ print(f"Output:\n{result['output']}")
 import requests
 
 API_URL = "http://localhost:8000"
-API_KEY = "your-secret-api-key-here"
+OAUTH_TOKEN = "your-jwt-token-here"  # Get this from your OAuth provider
 
 headers = {
-    "X-API-Key": API_KEY,
+    "Authorization": f"Bearer {OAUTH_TOKEN}",
     "Content-Type": "application/json"
 }
 
@@ -246,13 +252,13 @@ for line in response.iter_lines():
 const fetch = require('node-fetch');
 
 const API_URL = 'http://localhost:8000';
-const API_KEY = 'your-secret-api-key-here';
+const OAUTH_TOKEN = 'your-jwt-token-here';  // Get this from your OAuth provider
 
 async function executeClaude(prompt, workingDir) {
   const response = await fetch(`${API_URL}/api/execute`, {
     method: 'POST',
     headers: {
-      'X-API-Key': API_KEY,
+      'Authorization': `Bearer ${OAUTH_TOKEN}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -277,7 +283,7 @@ executeClaude('List all files', '/tmp/project');
 **Basic request:**
 ```bash
 curl -X POST http://localhost:8000/api/execute \
-  -H "X-API-Key: your-api-key" \
+  -H "Authorization: Bearer your-jwt-token" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Show git status"}'
 ```
@@ -285,7 +291,7 @@ curl -X POST http://localhost:8000/api/execute \
 **With custom working directory:**
 ```bash
 curl -X POST http://localhost:8000/api/execute \
-  -H "X-API-Key: your-api-key" \
+  -H "Authorization: Bearer your-jwt-token" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Find all TODO comments in Python files",
@@ -296,7 +302,7 @@ curl -X POST http://localhost:8000/api/execute \
 **Streaming response:**
 ```bash
 curl -X POST http://localhost:8000/api/execute/stream \
-  -H "X-API-Key: your-api-key" \
+  -H "Authorization: Bearer your-jwt-token" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Analyze the codebase structure"}' \
   --no-buffer
@@ -308,8 +314,11 @@ curl -X POST http://localhost:8000/api/execute/stream \
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
-| `ENABLE_AUTH` | Enable API key authentication | `true` | No |
-| `CLAUDE_API_KEY` | API key for authentication | - | Yes (if auth enabled) |
+| `ENABLE_AUTH` | Enable OAuth authentication | `true` | No |
+| `OAUTH_ISSUER` | OAuth token issuer URL | - | Yes (if auth enabled) |
+| `OAUTH_AUDIENCE` | OAuth token audience (client ID) | - | Yes (if auth enabled) |
+| `OAUTH_JWKS_URL` | JWKS endpoint for public keys | - | Recommended for production |
+| `OAUTH_ALGORITHMS` | Allowed signing algorithms | `RS256` | No |
 | `HOST` | Server host address | `0.0.0.0` | No |
 | `PORT` | Server port | `8000` | No |
 | `CLAUDE_CODE_PATH` | Path to Claude Code CLI | `claude` | No |
@@ -324,7 +333,7 @@ export ENABLE_AUTH=false
 python server.py
 ```
 
-Then make requests without the `X-API-Key` header:
+Then make requests without the `Authorization` header:
 
 ```bash
 curl -X POST http://localhost:8000/api/execute \
@@ -387,8 +396,10 @@ Build and run:
 docker build -t claude-api .
 docker run -d \
   -p 8000:8000 \
-  -e CLAUDE_API_KEY=your-key \
   -e ENABLE_AUTH=true \
+  -e OAUTH_ISSUER=https://accounts.google.com \
+  -e OAUTH_AUDIENCE=your-client-id \
+  -e OAUTH_JWKS_URL=https://www.googleapis.com/oauth2/v3/certs \
   claude-api
 ```
 
@@ -415,9 +426,10 @@ server {
 
 ## Security Considerations
 
-1. **API Keys**: Always use strong, random API keys in production
-2. **HTTPS**: Use HTTPS in production (configure via reverse proxy)
-3. **CORS**: Configure `allow_origins` in server.py for production
+1. **OAuth Tokens**: Use proper OAuth 2.0 authentication with JWT tokens
+2. **JWKS**: Always configure OAUTH_JWKS_URL for signature verification in production
+3. **HTTPS**: Use HTTPS in production (configure via reverse proxy)
+4. **CORS**: Configure `allow_origins` in server.py for production
 4. **Rate Limiting**: Consider adding rate limiting for production use
 5. **Timeouts**: Set appropriate timeouts to prevent resource exhaustion
 6. **Input Validation**: The server validates inputs, but be cautious with prompts
@@ -436,12 +448,14 @@ CLAUDE_CODE_PATH=/usr/local/bin/claude
 
 ### Authentication errors
 
-Error: `Invalid or missing API key`
+Error: `Invalid or missing authorization token`
 
-Solution: Ensure you're sending the correct header:
+Solution: Ensure you're sending the correct Bearer token:
 ```bash
--H "X-API-Key: your-actual-api-key"
+-H "Authorization: Bearer your-jwt-token"
 ```
+
+See [OAUTH_SETUP.md](OAUTH_SETUP.md) for detailed troubleshooting.
 
 ### Timeout errors
 

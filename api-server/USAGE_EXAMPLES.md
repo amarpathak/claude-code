@@ -38,7 +38,7 @@ def execute_claude(prompt: str) -> dict:
     response = requests.post(
         "http://localhost:8000/api/execute",
         headers={
-            "X-API-Key": "your-api-key",
+            "Authorization": "Bearer your-jwt-token",
             "Content-Type": "application/json"
         },
         json={"prompt": prompt}
@@ -61,7 +61,7 @@ def stream_claude(prompt: str):
     response = requests.post(
         "http://localhost:8000/api/execute/stream",
         headers={
-            "X-API-Key": "your-api-key",
+            "Authorization": "Bearer your-jwt-token",
             "Content-Type": "application/json"
         },
         json={"prompt": prompt},
@@ -92,7 +92,7 @@ def safe_execute_claude(
         response = requests.post(
             "http://localhost:8000/api/execute",
             headers={
-                "X-API-Key": "your-api-key",
+                "Authorization": "Bearer your-jwt-token",
                 "Content-Type": "application/json"
             },
             json={
@@ -138,7 +138,7 @@ async def async_execute_claude(prompt: str) -> dict:
         async with session.post(
             "http://localhost:8000/api/execute",
             headers={
-                "X-API-Key": "your-api-key",
+                "Authorization": "Bearer your-jwt-token",
                 "Content-Type": "application/json"
             },
             json={"prompt": prompt}
@@ -169,7 +169,7 @@ async function executeClaude(prompt) {
     const response = await fetch('http://localhost:8000/api/execute', {
         method: 'POST',
         headers: {
-            'X-API-Key': 'your-api-key',
+            'Authorization': 'Bearer your-jwt-token',
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({ prompt })
@@ -195,7 +195,7 @@ async function streamClaude(prompt) {
     const response = await fetch('http://localhost:8000/api/execute/stream', {
         method: 'POST',
         headers: {
-            'X-API-Key': 'your-api-key',
+            'Authorization': 'Bearer your-jwt-token',
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({ prompt })
@@ -226,7 +226,7 @@ const axios = require('axios');
 const claudeAPI = axios.create({
     baseURL: 'http://localhost:8000',
     headers: {
-        'X-API-Key': 'your-api-key',
+        'Authorization': 'Bearer your-jwt-token',
         'Content-Type': 'application/json'
     }
 });
@@ -279,7 +279,7 @@ app.post('/webhook/process', async (req, res) => {
             },
             {
                 headers: {
-                    'X-API-Key': process.env.CLAUDE_API_KEY,
+                    'Authorization': `Bearer ${process.env.OAUTH_TOKEN}`,
                     'Content-Type': 'application/json'
                 }
             }
@@ -308,7 +308,7 @@ app.listen(3000, () => {
 
 ```bash
 curl -X POST http://localhost:8000/api/execute \
-  -H "X-API-Key: your-api-key" \
+  -H "Authorization: Bearer your-jwt-token" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "List all files in the src directory"
@@ -319,7 +319,7 @@ curl -X POST http://localhost:8000/api/execute \
 
 ```bash
 curl -X POST http://localhost:8000/api/execute \
-  -H "X-API-Key: your-api-key" \
+  -H "Authorization: Bearer your-jwt-token" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Run tests",
@@ -332,7 +332,7 @@ curl -X POST http://localhost:8000/api/execute \
 
 ```bash
 curl -X POST http://localhost:8000/api/execute/stream \
-  -H "X-API-Key: your-api-key" \
+  -H "Authorization: Bearer your-jwt-token" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Analyze code quality"
@@ -344,7 +344,7 @@ curl -X POST http://localhost:8000/api/execute/stream \
 
 ```bash
 curl -X POST http://localhost:8000/api/execute \
-  -H "X-API-Key: your-api-key" \
+  -H "Authorization: Bearer your-jwt-token" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Show git status"}' \
   | jq '.'
@@ -367,7 +367,7 @@ jobs:
       - name: Run Claude Code Analysis
         run: |
           curl -X POST ${{ secrets.CLAUDE_API_URL }}/api/execute \
-            -H "X-API-Key: ${{ secrets.CLAUDE_API_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.OAUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d "{
               \"prompt\": \"Analyze this code for security issues\",
@@ -399,7 +399,7 @@ def handle_claude_command(ack, command, say):
     try:
         result = requests.post(
             "http://localhost:8000/api/execute",
-            headers={"X-API-Key": os.environ["CLAUDE_API_KEY"]},
+            headers={"Authorization": f"Bearer {os.environ['OAUTH_TOKEN']}"},
             json={"prompt": prompt, "timeout": 60}
         ).json()
 
@@ -431,7 +431,7 @@ async def claude(ctx, *, prompt):
     try:
         result = requests.post(
             "http://localhost:8000/api/execute",
-            headers={"X-API-Key": os.environ["CLAUDE_API_KEY"]},
+            headers={"Authorization": f"Bearer {os.environ['OAUTH_TOKEN']}"},
             json={"prompt": prompt, "timeout": 120}
         ).json()
 
@@ -536,7 +536,7 @@ results = asyncio.run(process_repositories(repos))
 
 # Daily code analysis
 curl -X POST http://localhost:8000/api/execute \
-  -H "X-API-Key: ${CLAUDE_API_KEY}" \
+  -H "Authorization: Bearer ${OAUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "Generate daily code quality report",
@@ -556,7 +556,7 @@ Add to crontab:
 2. **Error Handling**: Always implement proper error handling
 3. **Rate Limiting**: Implement rate limiting for production use
 4. **Logging**: Log all API calls for debugging and auditing
-5. **Security**: Never expose API keys in client-side code
+5. **Security**: Never expose OAuth tokens in client-side code
 6. **Working Directory**: Always specify working_directory for clarity
 7. **Async Operations**: Use async/await for non-blocking operations
 
@@ -564,7 +564,7 @@ Add to crontab:
 
 ### Common Issues
 
-1. **401 Unauthorized**: Check API key in headers
+1. **401 Unauthorized**: Check OAuth token in Authorization header
 2. **Timeout**: Increase timeout value or optimize prompt
 3. **500 Error**: Check Claude Code installation and logs
 4. **Empty Output**: Verify working_directory exists and is accessible

@@ -13,19 +13,19 @@ from typing import Optional
 class ClaudeAPIClient:
     """Simple client for Claude Code API."""
 
-    def __init__(self, base_url: str, api_key: Optional[str] = None):
+    def __init__(self, base_url: str, oauth_token: Optional[str] = None):
         """
         Initialize the client.
 
         Args:
             base_url: Base URL of the API server (e.g., http://localhost:8000)
-            api_key: API key for authentication (optional if auth is disabled)
+            oauth_token: OAuth JWT token for authentication (optional if auth is disabled)
         """
         self.base_url = base_url.rstrip('/')
-        self.api_key = api_key
+        self.oauth_token = oauth_token
         self.headers = {'Content-Type': 'application/json'}
-        if api_key:
-            self.headers['X-API-Key'] = api_key
+        if oauth_token:
+            self.headers['Authorization'] = f'Bearer {oauth_token}'
 
     def health_check(self) -> dict:
         """Check if the API server is healthy."""
@@ -109,10 +109,10 @@ def main():
     """Example usage of the Claude API client."""
     # Configuration
     API_URL = "http://localhost:8000"
-    API_KEY = None  # Set this if authentication is enabled
+    OAUTH_TOKEN = None  # Set this to your JWT token if authentication is enabled
 
     # Create client
-    client = ClaudeAPIClient(API_URL, API_KEY)
+    client = ClaudeAPIClient(API_URL, OAUTH_TOKEN)
 
     print("Claude Code API Client Example")
     print("=" * 50)
