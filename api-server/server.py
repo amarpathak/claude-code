@@ -28,6 +28,7 @@ API_KEY = os.getenv("CLAUDE_API_KEY", "")
 CLAUDE_CODE_PATH = os.getenv("CLAUDE_CODE_PATH", "claude")
 DEFAULT_WORKING_DIR = os.getenv("DEFAULT_WORKING_DIR", os.getcwd())
 ENABLE_AUTH = os.getenv("ENABLE_AUTH", "true").lower() == "true"
+ANTHROPIC_BASE_URL = os.getenv("ANTHROPIC_BASE_URL", "")
 
 
 # Request/Response Models
@@ -133,6 +134,8 @@ async def execute_claude_code(
 
     # Prepare environment
     env = os.environ.copy()
+    if ANTHROPIC_BASE_URL:
+        env["ANTHROPIC_BASE_URL"] = ANTHROPIC_BASE_URL
     if env_vars:
         env.update(env_vars)
 
@@ -212,6 +215,8 @@ async def stream_claude_code(
 
     # Prepare environment
     env = os.environ.copy()
+    if ANTHROPIC_BASE_URL:
+        env["ANTHROPIC_BASE_URL"] = ANTHROPIC_BASE_URL
     if env_vars:
         env.update(env_vars)
 
