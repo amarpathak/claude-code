@@ -1,0 +1,179 @@
+{
+  "id": "54b2d931-34c6-418e-b56d-e87a101b14c2",
+  "name": "Health & Wellness Blueprint",
+  "slug": "health-wellness-blueprint",
+  "version": "1.0.0",
+  "type": "health",
+  "category": "blueprint",
+  "description": "Physical vitality, mental wellness, and preventive health guidance",
+  "structure": {
+    "title_pattern": "{{topic}} Blueprint for {{user_name}}",
+    "word_count": 1400,
+    "sections": [
+      {
+        "heading": "Your Health Constitution",
+        "purpose": "Understand inherent health patterns",
+        "word_count": 350,
+        "key_placements": [
+          "1st house",
+          "6th house",
+          "Sun",
+          "Moon",
+          "Mars"
+        ],
+        "points_to_cover": [
+          "Natural constitution",
+          "Energy levels",
+          "Health vulnerabilities"
+        ],
+        "questions_to_answer": [
+          "What is my natural health constitution?",
+          "What areas need attention?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Physical Vitality",
+        "purpose": "Assess physical health and energy",
+        "word_count": 350,
+        "key_placements": [
+          "Sun",
+          "Mars",
+          "1st house"
+        ],
+        "points_to_cover": [
+          "Physical strength",
+          "Stamina and endurance",
+          "Body systems to watch"
+        ],
+        "questions_to_answer": [
+          "How is my physical health?",
+          "What can I do to improve vitality?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Mental & Emotional Wellbeing",
+        "purpose": "Address psychological health",
+        "word_count": 350,
+        "key_placements": [
+          "Moon",
+          "Mercury",
+          "4th house"
+        ],
+        "points_to_cover": [
+          "Mental health patterns",
+          "Emotional resilience",
+          "Stress management"
+        ],
+        "questions_to_answer": [
+          "How is my mental health?",
+          "How can I manage stress better?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Wellness Recommendations",
+        "purpose": "Practical health guidance",
+        "word_count": 250,
+        "key_placements": [
+          "6th house",
+          "Mars",
+          "Saturn"
+        ],
+        "points_to_cover": [
+          "Diet and nutrition",
+          "Exercise recommendations",
+          "Preventive measures"
+        ],
+        "questions_to_answer": [
+          "What lifestyle changes should I make?",
+          "How can I prevent health issues?"
+        ],
+        "subsections": []
+      }
+    ]
+  },
+  "follow_up_questions": [
+    {
+      "id": "65245ac7-147f-45af-9f07-4a17d3bd3b8c",
+      "question": "What aspect of health concerns you most?",
+      "type": "single_choice",
+      "options": [
+        "Physical health",
+        "Mental health",
+        "Energy levels",
+        "Chronic condition",
+        "Prevention"
+      ],
+      "required": true,
+      "condition": null,
+      "weight": 10,
+      "purpose": "Focus on primary health concern"
+    }
+  ],
+  "context_data": {
+    "required_placements": {
+      "planets": [
+        "Sun",
+        "Moon",
+        "Mars"
+      ],
+      "houses": [
+        1,
+        6
+      ],
+      "aspects": [],
+      "dashas": [
+        "current"
+      ],
+      "yogas": [],
+      "nakshatras": []
+    },
+    "user_preferences": {
+      "tone": "balanced",
+      "focus": "balanced",
+      "timeframe": "both",
+      "depth": "standard",
+      "language_style": "simple"
+    },
+    "reading_params": {
+      "include_remedies": true,
+      "include_timing": true,
+      "include_examples": false,
+      "include_comparisons": false,
+      "include_warnings": true
+    }
+  },
+  "prompts": {
+    "template_generation": "",
+    "expansion": "",
+    "system_context": "",
+    "examples": []
+  },
+  "quality_criteria": {
+    "min_word_count": 1200,
+    "max_word_count": 2000,
+    "required_keywords": [],
+    "required_placements": [],
+    "tone_requirements": [],
+    "structure_requirements": []
+  },
+  "metadata": {
+    "created_at": "2025-11-24T18:42:21.686Z",
+    "updated_at": "2025-11-24T18:42:21.686Z",
+    "created_by": "system",
+    "tags": [
+      "health",
+      "wellness",
+      "vitality",
+      "astrology"
+    ],
+    "usage_count": 0,
+    "average_rating": 0,
+    "is_active": true,
+    "is_public": false
+  },
+  "parent_template_id": null,
+  "variants": []
+}

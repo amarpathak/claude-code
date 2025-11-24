@@ -1,0 +1,194 @@
+{
+  "id": "532f1664-4507-45f6-8e5b-62c7454854a3",
+  "name": "Money & Wealth Blueprint",
+  "slug": "money-wealth-blueprint",
+  "version": "1.0.0",
+  "type": "money",
+  "category": "blueprint",
+  "description": "Financial opportunities, wealth timing, and prosperity guidance",
+  "structure": {
+    "title_pattern": "{{topic}} Blueprint for {{user_name}}",
+    "word_count": 1500,
+    "sections": [
+      {
+        "heading": "Your Financial Nature",
+        "purpose": "Understand money mindset and patterns",
+        "word_count": 300,
+        "key_placements": [
+          "2nd house",
+          "8th house",
+          "Jupiter",
+          "Saturn"
+        ],
+        "points_to_cover": [
+          "Natural relationship with money",
+          "Earning style",
+          "Spending patterns"
+        ],
+        "questions_to_answer": [
+          "How do I relate to money?",
+          "What are my financial strengths?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Wealth Opportunities & Timing",
+        "purpose": "Identify wealth windows",
+        "word_count": 400,
+        "key_placements": [
+          "Jupiter transits",
+          "Current dasha",
+          "11th house"
+        ],
+        "points_to_cover": [
+          "Favorable financial periods",
+          "Investment timing",
+          "Business opportunities"
+        ],
+        "questions_to_answer": [
+          "When will wealth come?",
+          "When should I invest or start a business?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Income Streams & Assets",
+        "purpose": "Explore wealth building strategies",
+        "word_count": 350,
+        "key_placements": [
+          "2nd house",
+          "11th house",
+          "Jupiter"
+        ],
+        "points_to_cover": [
+          "Primary income sources",
+          "Potential side income",
+          "Asset accumulation"
+        ],
+        "questions_to_answer": [
+          "How can I increase my income?",
+          "What investments suit me?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Financial Advice",
+        "purpose": "Practical money guidance",
+        "word_count": 250,
+        "key_placements": [
+          "Saturn",
+          "6th house",
+          "8th house"
+        ],
+        "points_to_cover": [
+          "Money management tips",
+          "Debt handling",
+          "Long-term wealth building"
+        ],
+        "questions_to_answer": [
+          "How can I manage money better?",
+          "What financial pitfalls should I avoid?"
+        ],
+        "subsections": []
+      }
+    ]
+  },
+  "follow_up_questions": [
+    {
+      "id": "f5ed99b9-3009-43be-94b7-e4209bcf62ad",
+      "question": "What is your primary financial goal?",
+      "type": "single_choice",
+      "options": [
+        "Increase income",
+        "Build savings",
+        "Invest wisely",
+        "Pay off debt",
+        "Financial freedom"
+      ],
+      "required": true,
+      "condition": null,
+      "weight": 10,
+      "purpose": "Focus on specific financial goal"
+    },
+    {
+      "id": "44a34c90-2b96-49b1-8fd4-f0b1e0b76651",
+      "question": "What is your current financial situation?",
+      "type": "single_choice",
+      "options": [
+        "Stable",
+        "Struggling",
+        "Growing",
+        "Uncertain",
+        "Prefer not to say"
+      ],
+      "required": false,
+      "condition": null,
+      "weight": 8,
+      "purpose": "Gauge urgency of financial guidance"
+    }
+  ],
+  "context_data": {
+    "required_placements": {
+      "planets": [
+        "Jupiter",
+        "Saturn"
+      ],
+      "houses": [
+        2,
+        8,
+        11
+      ],
+      "aspects": [],
+      "dashas": [
+        "current"
+      ],
+      "yogas": [],
+      "nakshatras": []
+    },
+    "user_preferences": {
+      "tone": "balanced",
+      "focus": "balanced",
+      "timeframe": "both",
+      "depth": "standard",
+      "language_style": "simple"
+    },
+    "reading_params": {
+      "include_remedies": true,
+      "include_timing": true,
+      "include_examples": false,
+      "include_comparisons": false,
+      "include_warnings": true
+    }
+  },
+  "prompts": {
+    "template_generation": "",
+    "expansion": "",
+    "system_context": "",
+    "examples": []
+  },
+  "quality_criteria": {
+    "min_word_count": 1200,
+    "max_word_count": 2000,
+    "required_keywords": [],
+    "required_placements": [],
+    "tone_requirements": [],
+    "structure_requirements": []
+  },
+  "metadata": {
+    "created_at": "2025-11-24T18:42:21.686Z",
+    "updated_at": "2025-11-24T18:42:21.686Z",
+    "created_by": "system",
+    "tags": [
+      "money",
+      "wealth",
+      "finance",
+      "astrology"
+    ],
+    "usage_count": 0,
+    "average_rating": 0,
+    "is_active": true,
+    "is_public": false
+  },
+  "parent_template_id": null,
+  "variants": []
+}

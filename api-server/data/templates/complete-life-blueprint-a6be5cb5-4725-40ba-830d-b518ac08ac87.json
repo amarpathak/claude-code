@@ -1,0 +1,218 @@
+{
+  "id": "a6be5cb5-4725-40ba-830d-b518ac08ac87",
+  "name": "Complete Life Blueprint",
+  "slug": "complete-life-blueprint",
+  "version": "1.0.0",
+  "type": "general",
+  "category": "report",
+  "description": "Comprehensive analysis covering all major life areas",
+  "structure": {
+    "word_count": 2000,
+    "sections": [
+      {
+        "heading": "Life Overview",
+        "purpose": "Big picture life analysis",
+        "word_count": 400,
+        "key_placements": [
+          "Sun",
+          "Moon",
+          "Ascendant",
+          "Current dasha"
+        ],
+        "points_to_cover": [
+          "Current life phase",
+          "Overall trajectory",
+          "Key themes"
+        ],
+        "questions_to_answer": [
+          "What is the current state of my life?",
+          "What themes define my life journey?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Love & Relationships",
+        "purpose": "Romantic life summary",
+        "word_count": 350,
+        "key_placements": [
+          "Venus",
+          "7th house",
+          "Moon"
+        ],
+        "points_to_cover": [
+          "Relationship status and potential",
+          "Romantic opportunities",
+          "Partnership advice"
+        ],
+        "questions_to_answer": [
+          "How is my love life?",
+          "What can I expect in relationships?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Career & Purpose",
+        "purpose": "Professional life summary",
+        "word_count": 350,
+        "key_placements": [
+          "Sun",
+          "10th house",
+          "Saturn"
+        ],
+        "points_to_cover": [
+          "Career direction",
+          "Professional opportunities",
+          "Life purpose"
+        ],
+        "questions_to_answer": [
+          "How is my career?",
+          "What is my purpose?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Money & Wealth",
+        "purpose": "Financial life summary",
+        "word_count": 300,
+        "key_placements": [
+          "2nd house",
+          "Jupiter",
+          "11th house"
+        ],
+        "points_to_cover": [
+          "Financial status",
+          "Wealth opportunities",
+          "Money advice"
+        ],
+        "questions_to_answer": [
+          "How is my financial situation?",
+          "When will wealth come?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Personal Growth",
+        "purpose": "Development and evolution",
+        "word_count": 300,
+        "key_placements": [
+          "Jupiter",
+          "Saturn",
+          "North Node"
+        ],
+        "points_to_cover": [
+          "Growth areas",
+          "Challenges to overcome",
+          "Next steps"
+        ],
+        "questions_to_answer": [
+          "How can I grow?",
+          "What should I focus on?"
+        ],
+        "subsections": []
+      }
+    ]
+  },
+  "follow_up_questions": [
+    {
+      "id": "fddb2b0d-ab10-4b60-a5d4-2a7f8fbdee4a",
+      "question": "What area of your life needs the most attention?",
+      "type": "single_choice",
+      "options": [
+        "Love & relationships",
+        "Career & purpose",
+        "Money & wealth",
+        "Health & wellness",
+        "Personal growth"
+      ],
+      "required": true,
+      "condition": null,
+      "weight": 10,
+      "purpose": "Prioritize focus area"
+    },
+    {
+      "id": "eccfdbdc-ed81-45ef-9338-1f1b562527d2",
+      "question": "How would you describe your current life phase?",
+      "type": "single_choice",
+      "options": [
+        "Starting fresh",
+        "Building & growing",
+        "Peak performance",
+        "Transition",
+        "Reflection & reset"
+      ],
+      "required": false,
+      "condition": null,
+      "weight": 8,
+      "purpose": "Understand life phase context"
+    }
+  ],
+  "context_data": {
+    "required_placements": {
+      "planets": [
+        "Sun",
+        "Moon",
+        "Venus",
+        "Jupiter",
+        "Saturn"
+      ],
+      "houses": [
+        1,
+        2,
+        7,
+        10
+      ],
+      "aspects": [],
+      "dashas": [
+        "current",
+        "upcoming"
+      ],
+      "yogas": [],
+      "nakshatras": []
+    },
+    "user_preferences": {
+      "tone": "balanced",
+      "focus": "balanced",
+      "timeframe": "both",
+      "depth": "standard",
+      "language_style": "simple"
+    },
+    "reading_params": {
+      "include_remedies": true,
+      "include_timing": true,
+      "include_examples": false,
+      "include_comparisons": false,
+      "include_warnings": true
+    }
+  },
+  "prompts": {
+    "template_generation": "",
+    "expansion": "",
+    "system_context": "",
+    "examples": []
+  },
+  "quality_criteria": {
+    "min_word_count": 1200,
+    "max_word_count": 2000,
+    "required_keywords": [],
+    "required_placements": [],
+    "tone_requirements": [],
+    "structure_requirements": []
+  },
+  "metadata": {
+    "created_at": "2025-11-24T18:42:21.687Z",
+    "updated_at": "2025-11-24T18:57:13.518Z",
+    "created_by": "system",
+    "tags": [
+      "general",
+      "complete",
+      "life-analysis",
+      "astrology"
+    ],
+    "usage_count": 0,
+    "average_rating": 0,
+    "is_active": true,
+    "is_public": false
+  },
+  "parent_template_id": null,
+  "variants": []
+}

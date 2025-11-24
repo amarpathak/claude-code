@@ -1,0 +1,177 @@
+{
+  "id": "d1751c15-8403-4921-aac9-fafb1b128a88",
+  "name": "Spiritual Path Blueprint",
+  "slug": "spiritual-path-blueprint",
+  "version": "1.0.0",
+  "type": "spiritual",
+  "category": "blueprint",
+  "description": "Spiritual growth, soul purpose, and consciousness expansion",
+  "structure": {
+    "title_pattern": "{{topic}} Blueprint for {{user_name}}",
+    "word_count": 1500,
+    "sections": [
+      {
+        "heading": "Your Spiritual Nature",
+        "purpose": "Identify spiritual inclinations",
+        "word_count": 350,
+        "key_placements": [
+          "12th house",
+          "9th house",
+          "Jupiter",
+          "Ketu",
+          "Neptune"
+        ],
+        "points_to_cover": [
+          "Natural spiritual tendencies",
+          "Connection to higher consciousness",
+          "Spiritual gifts"
+        ],
+        "questions_to_answer": [
+          "What is my spiritual nature?",
+          "What spiritual gifts do I have?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Soul Purpose & Mission",
+        "purpose": "Reveal deeper life purpose",
+        "word_count": 400,
+        "key_placements": [
+          "North Node",
+          "Sun",
+          "9th house"
+        ],
+        "points_to_cover": [
+          "Karmic mission",
+          "Soul lessons",
+          "Evolutionary path"
+        ],
+        "questions_to_answer": [
+          "What is my soul purpose?",
+          "Why am I here?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Spiritual Practices",
+        "purpose": "Recommend spiritual practices",
+        "word_count": 350,
+        "key_placements": [
+          "Jupiter",
+          "Moon",
+          "12th house"
+        ],
+        "points_to_cover": [
+          "Suitable meditation styles",
+          "Spiritual disciplines",
+          "Connection methods"
+        ],
+        "questions_to_answer": [
+          "What practices suit me?",
+          "How can I deepen my spiritual connection?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Spiritual Timing",
+        "purpose": "Timing for spiritual growth",
+        "word_count": 250,
+        "key_placements": [
+          "Current dasha",
+          "Jupiter transits"
+        ],
+        "points_to_cover": [
+          "Awakening periods",
+          "Best times for retreat",
+          "Growth windows"
+        ],
+        "questions_to_answer": [
+          "When will spiritual growth occur?",
+          "When should I focus on spiritual practice?"
+        ],
+        "subsections": []
+      }
+    ]
+  },
+  "follow_up_questions": [
+    {
+      "id": "36174eb8-52ce-41af-9a43-9cea3f651a3c",
+      "question": "What is your current spiritual practice?",
+      "type": "single_choice",
+      "options": [
+        "Regular practice",
+        "Occasional",
+        "Just starting",
+        "Exploring",
+        "None currently"
+      ],
+      "required": false,
+      "condition": null,
+      "weight": 8,
+      "purpose": "Gauge spiritual experience level"
+    }
+  ],
+  "context_data": {
+    "required_placements": {
+      "planets": [
+        "Jupiter",
+        "Ketu"
+      ],
+      "houses": [
+        9,
+        12
+      ],
+      "aspects": [],
+      "dashas": [
+        "current"
+      ],
+      "yogas": [],
+      "nakshatras": []
+    },
+    "user_preferences": {
+      "tone": "balanced",
+      "focus": "balanced",
+      "timeframe": "both",
+      "depth": "standard",
+      "language_style": "simple"
+    },
+    "reading_params": {
+      "include_remedies": true,
+      "include_timing": true,
+      "include_examples": false,
+      "include_comparisons": false,
+      "include_warnings": true
+    }
+  },
+  "prompts": {
+    "template_generation": "",
+    "expansion": "",
+    "system_context": "",
+    "examples": []
+  },
+  "quality_criteria": {
+    "min_word_count": 1200,
+    "max_word_count": 2000,
+    "required_keywords": [],
+    "required_placements": [],
+    "tone_requirements": [],
+    "structure_requirements": []
+  },
+  "metadata": {
+    "created_at": "2025-11-24T18:42:21.687Z",
+    "updated_at": "2025-11-24T18:42:21.687Z",
+    "created_by": "system",
+    "tags": [
+      "spiritual",
+      "purpose",
+      "consciousness",
+      "astrology"
+    ],
+    "usage_count": 0,
+    "average_rating": 0,
+    "is_active": true,
+    "is_public": false
+  },
+  "parent_template_id": null,
+  "variants": []
+}

@@ -1,0 +1,209 @@
+{
+  "id": "2cbff088-60d1-4b13-992e-d9cb05917429",
+  "name": "Love & Relationships Blueprint",
+  "slug": "love-relationships-blueprint",
+  "version": "1.0.0",
+  "type": "love",
+  "category": "blueprint",
+  "description": "Comprehensive analysis of romantic life, partnership potential, and relationship timing",
+  "structure": {
+    "title_pattern": "{{topic}} Blueprint for {{user_name}}",
+    "word_count": 1500,
+    "sections": [
+      {
+        "heading": "Your Romantic Nature",
+        "purpose": "Analyze the user's approach to love and relationships",
+        "word_count": 300,
+        "key_placements": [
+          "Venus",
+          "7th house",
+          "Moon",
+          "Mars"
+        ],
+        "points_to_cover": [
+          "Natural romantic tendencies",
+          "How you express love",
+          "What you need in a partner"
+        ],
+        "questions_to_answer": [
+          "What is your approach to love?",
+          "How do you express affection?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Love Timeline & Opportunities",
+        "purpose": "Provide timing for romantic opportunities",
+        "word_count": 350,
+        "key_placements": [
+          "Current dasha",
+          "Venus transits",
+          "7th house lord"
+        ],
+        "points_to_cover": [
+          "Current relationship phase",
+          "Upcoming romantic periods",
+          "Best timing for commitment"
+        ],
+        "questions_to_answer": [
+          "When will love opportunities arise?",
+          "What is the timing for marriage?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Compatibility Insights",
+        "purpose": "Explain what makes a good match",
+        "word_count": 300,
+        "key_placements": [
+          "Moon nakshatra",
+          "Venus sign",
+          "7th house"
+        ],
+        "points_to_cover": [
+          "Compatible partner traits",
+          "Potential challenges in relationships",
+          "How to maintain harmony"
+        ],
+        "questions_to_answer": [
+          "What kind of partner suits you?",
+          "What should you look for in a relationship?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Relationship Advice",
+        "purpose": "Practical guidance for love life",
+        "word_count": 300,
+        "key_placements": [
+          "Venus",
+          "Mars",
+          "Moon"
+        ],
+        "points_to_cover": [
+          "Steps to attract love",
+          "How to improve current relationships",
+          "Red flags to watch for"
+        ],
+        "questions_to_answer": [
+          "What can I do to improve my love life?",
+          "How can I prepare for a relationship?"
+        ],
+        "subsections": []
+      }
+    ]
+  },
+  "follow_up_questions": [
+    {
+      "id": "9321b3ce-0c65-41b5-8117-773aec577fe5",
+      "question": "What is your current relationship status?",
+      "type": "single_choice",
+      "options": [
+        "Single",
+        "Dating",
+        "Committed",
+        "Married",
+        "Complicated"
+      ],
+      "required": true,
+      "condition": null,
+      "weight": 10,
+      "purpose": "Tailor advice to current situation"
+    },
+    {
+      "id": "980271b0-acda-446c-8ade-15744c63f07f",
+      "question": "What matters most to you in a relationship?",
+      "type": "single_choice",
+      "options": [
+        "Emotional connection",
+        "Physical attraction",
+        "Shared values",
+        "Financial stability",
+        "Adventure & fun"
+      ],
+      "required": false,
+      "condition": null,
+      "weight": 8,
+      "purpose": "Understand relationship priorities"
+    },
+    {
+      "id": "5307658f-5f1c-4e8c-abc5-feae66f52b97",
+      "question": "Have you experienced heartbreak?",
+      "type": "single_choice",
+      "options": [
+        "Yes, recently",
+        "Yes, in the past",
+        "No",
+        "Prefer not to say"
+      ],
+      "required": false,
+      "condition": null,
+      "weight": 7,
+      "purpose": "Address healing if needed"
+    }
+  ],
+  "context_data": {
+    "required_placements": {
+      "planets": [
+        "Venus",
+        "Mars",
+        "Moon"
+      ],
+      "houses": [
+        5,
+        7
+      ],
+      "aspects": [],
+      "dashas": [
+        "current"
+      ],
+      "yogas": [],
+      "nakshatras": []
+    },
+    "user_preferences": {
+      "tone": "compassionate",
+      "focus": "practical",
+      "timeframe": "both",
+      "depth": "standard",
+      "language_style": "simple"
+    },
+    "reading_params": {
+      "include_remedies": true,
+      "include_timing": true,
+      "include_examples": false,
+      "include_comparisons": false,
+      "include_warnings": true
+    }
+  },
+  "prompts": {
+    "template_generation": "",
+    "expansion": "",
+    "system_context": "",
+    "examples": []
+  },
+  "quality_criteria": {
+    "min_word_count": 1200,
+    "max_word_count": 2000,
+    "required_keywords": [],
+    "required_placements": [],
+    "tone_requirements": [],
+    "structure_requirements": []
+  },
+  "metadata": {
+    "created_at": "2025-11-24T18:42:21.685Z",
+    "updated_at": "2025-11-24T18:42:21.685Z",
+    "created_by": "system",
+    "tags": [
+      "love",
+      "relationships",
+      "romance",
+      "astrology"
+    ],
+    "usage_count": 0,
+    "average_rating": 0,
+    "is_active": true,
+    "is_public": false
+  },
+  "parent_template_id": null,
+  "variants": []
+}

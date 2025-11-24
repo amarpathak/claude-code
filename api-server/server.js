@@ -1,29 +1,80 @@
 /**
- * Express server for executing Claude Code commands via HTTP API.
+ * Claude Code API Server
  *
- * This server provides REST endpoints to:
- * - Execute Claude Code commands
- * - Stream responses in real-time
- * - Handle authentication via API keys
- * - Support Cloudflare tunnel integration
+ * Express server providing REST API access to Claude Code functionality
+ *
+ * Features:
+ * - Standard execute mode (buffer-based, quick Q&A)
+ * - Workspace mode (file-based, persistent storage, full tool access)
+ * - API key management with admin dashboard
+ * - Usage tracking and statistics
+ * - Cloudflare tunnel support
  */
 
-const express = require('express');
-const cors = require('cors');
-const { spawn } = require('child_process');
-const path = require('path');
-const cloudflared = require('cloudflared');
+// Load environment variables FIRST
 require('dotenv').config();
 
-// Configuration
-const API_KEY = process.env.CLAUDE_API_KEY || '';
-const CLAUDE_CODE_PATH = process.env.CLAUDE_CODE_PATH || 'claude';
-const DEFAULT_WORKING_DIR = process.env.DEFAULT_WORKING_DIR || process.cwd();
-const ENABLE_AUTH = (process.env.ENABLE_AUTH || 'true').toLowerCase() === 'true';
-const ANTHROPIC_BASE_URL = process.env.ANTHROPIC_BASE_URL || '';
-const ENABLE_CLOUDFLARE = (process.env.ENABLE_CLOUDFLARE || 'false').toLowerCase() === 'true';
-const PORT = parseInt(process.env.PORT || '8000', 10);
-const HOST = process.env.HOST || '0.0.0.0';
+const express = require('express');
+const path = require('path');
+const cors = require('cors');
+const cloudflared = require('cloudflared');
+const WorkspaceManager = require('./workspace-manager');
+const ProjectManager = require('./src/projectManager');
+const FirestoreQueueManager = require('./serverless-queue/firestoreQueueManager');
+
+// Import routes
+const executeRoutes = require('./routes/execute');
+const workspaceRoutes = require('./routes/workspace');
+const adminRoutes = require('./routes/admin');
+const usageRoutes = require('./routes/usage');
+const dashboardRoutes = require('./routes/dashboard');
+const projectRoutes = require('./routes/projects');
+const batchRoutes = require('./routes/batch');
+const queueRoutes = require('./routes/queue');
+const fileRoutes = require('./routes/files');
+const birthstarUsageRoutes = require('./routes/birthstar-usage');
+const templateRoutes = require('./routes/templates');
+
+// Import middleware
+const authMiddleware = require('./middleware/auth');
+const trackingMiddleware = require('./middleware/tracking');
+
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+const config = {
+  // Server API authentication
+  SERVER_API_KEY: process.env.SERVER_API_KEY || '',
+  ENABLE_AUTH: (process.env.ENABLE_AUTH || 'true').toLowerCase() === 'true',
+  ADMIN_SECRET: process.env.ADMIN_SECRET || 'change-me-in-production',
+
+  // Claude Code configuration
+  CLAUDE_CODE_PATH: process.env.CLAUDE_CODE_PATH || 'claude',
+  DEFAULT_WORKING_DIR: process.env.DEFAULT_WORKING_DIR || process.cwd(),
+  ANTHROPIC_BASE_URL: process.env.ANTHROPIC_BASE_URL || '',
+
+  // Workspace configuration
+  WORKSPACE_BASE_DIR: process.env.WORKSPACE_BASE_DIR || './claude-data',
+
+  // Cloudflare tunnel
+  ENABLE_CLOUDFLARE: (process.env.ENABLE_CLOUDFLARE || 'false').toLowerCase() === 'true',
+  CLOUDFLARE_TUNNEL_TOKEN: process.env.CLOUDFLARE_TUNNEL_TOKEN || '',
+
+  // Queue system
+  ENABLE_QUEUE: (process.env.ENABLE_QUEUE || 'false').toLowerCase() === 'true',
+  REDIS_HOST: process.env.REDIS_HOST || 'localhost',
+  REDIS_PORT: process.env.REDIS_PORT || 6379,
+  REDIS_PASSWORD: process.env.REDIS_PASSWORD || '',
+
+  // Server settings
+  PORT: parseInt(process.env.PORT || '8000', 10),
+  HOST: process.env.HOST || '0.0.0.0'
+};
+
+// ============================================================================
+// STATE MANAGEMENT
+// ============================================================================
 
 // Usage tracking
 const usageStats = {
@@ -34,246 +85,245 @@ const usageStats = {
   totalExecutionTime: 0,
   requestsByEndpoint: {},
   recentRequests: [],
-  executeInsights: [] // Detailed insights for execute requests
+  executeInsights: []
 };
 
-// Express App
+// API Key Management
+const apiKeys = new Map();
+
+// Initialize with the main server key if provided
+if (config.SERVER_API_KEY) {
+  apiKeys.set(config.SERVER_API_KEY, {
+    key: config.SERVER_API_KEY,
+    name: 'Primary Server Key',
+    createdAt: new Date().toISOString(),
+    lastUsed: null,
+    requestCount: 0,
+    enabled: true
+  });
+}
+
+// Initialize Workspace Manager
+const workspaceManager = new WorkspaceManager(config.WORKSPACE_BASE_DIR);
+
+// Initialize Project Manager
+const projectManager = new ProjectManager('./data');
+
+// Initialize Firestore Queue Manager (always enabled)
+let queueManager = null;
+
+queueManager = new FirestoreQueueManager({
+  collectionName: 'jobs'
+});
+
+console.log('✓ Firestore Queue system initialized');
+
+// ============================================================================
+// EXPRESS APP SETUP
+// ============================================================================
+
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: '*',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key']
-}));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(cors());
+app.use(express.json());
 
-// Usage tracking middleware
-app.use((req, res, next) => {
-  const startTime = Date.now();
+// Initialize middleware
+authMiddleware.initialize(config, apiKeys);
+trackingMiddleware.initialize(usageStats);
 
-  // Track request
-  usageStats.totalRequests++;
-  const endpoint = req.path;
-  usageStats.requestsByEndpoint[endpoint] = (usageStats.requestsByEndpoint[endpoint] || 0) + 1;
+// Apply tracking middleware to all routes
+app.use(trackingMiddleware.trackRequest);
 
-  // Override res.json to track response
-  const originalJson = res.json.bind(res);
-  res.json = function(data) {
-    const executionTime = (Date.now() - startTime) / 1000;
+// ============================================================================
+// INITIALIZE ROUTES
+// ============================================================================
 
-    // Track success/failure
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      usageStats.successfulRequests++;
-    } else {
-      usageStats.failedRequests++;
+// Initialize all route modules with their dependencies
+executeRoutes.initializeRoute(config, usageStats, projectManager);
+workspaceRoutes.initializeRoute(config, workspaceManager);
+adminRoutes.initializeRoute(config, apiKeys);
+usageRoutes.initializeRoute(usageStats, apiKeys);
+dashboardRoutes.initializeRoute(apiKeys);
+projectRoutes.initializeRoute(config);
+batchRoutes.initializeRoute(config, projectManager);
+
+// Initialize Firestore queue routes (always enabled)
+queueRoutes.initializeRoute(queueManager);
+
+// Initialize file serving routes
+fileRoutes.initializeRoute(projectManager, './src/projects');
+
+// ============================================================================
+// ROOT ENDPOINT
+// ============================================================================
+
+app.get('/', (req, res) => {
+  res.json({
+    platform: 'Lemon AI Platform',
+    name: 'Lemon API Server',
+    version: '2.0.0',
+    description: 'Scalable AI-powered development and automation platform built on Claude Code',
+
+    capabilities: {
+      project_management: {
+        description: 'Manage unlimited projects with intelligent context',
+        features: [
+          'Auto-generated CLAUDE.md context files',
+          'Template-based initialization',
+          'Execution history tracking',
+          'File-based storage (scales to 10,000+ projects)',
+          'External project linking'
+        ],
+        endpoints: [
+          'POST /api/projects',
+          'GET /api/projects',
+          'GET /api/projects/:id',
+          'PUT /api/projects/:id',
+          'DELETE /api/projects/:id',
+          'GET /api/projects/:id/context',
+          'PUT /api/projects/:id/context',
+          'POST /api/projects/:id/context/regenerate',
+          'GET /api/projects/:id/history',
+          'GET /api/stats'
+        ]
+      },
+
+      ai_execution: {
+        description: 'AI-powered code operations with context',
+        features: [
+          'Standard mode (quick Q&A)',
+          'Workspace mode (persistent sessions)',
+          'Project mode (auto-loaded context)',
+          'Streaming and non-streaming',
+          'Custom working directories'
+        ],
+        endpoints: [
+          'POST /api/execute',
+          'POST /api/execute/stream',
+          'POST /api/workspace/execute',
+          'GET /api/workspace/sessions'
+        ]
+      },
+
+      batch_operations: {
+        description: 'Execute across hundreds of projects simultaneously',
+        features: [
+          'Parallel execution with concurrency control',
+          'Filter-based project selection',
+          'Job tracking and monitoring',
+          'Error aggregation',
+          'Progress reporting'
+        ],
+        endpoints: [
+          'POST /api/batch/execute',
+          'POST /api/batch/execute-by-filter',
+          'GET /api/batch/jobs/:id',
+          'GET /api/batch/jobs',
+          'DELETE /api/batch/jobs'
+        ]
+      },
+
+      templates: {
+        description: 'Enhanced template management system with metadata, follow-up questions, and job integration',
+        available: ['love', 'career', 'money', 'health', 'spiritual', 'general', 'custom'],
+        features: [
+          'Rich template schema with sections and context',
+          'Follow-up questions for better personalization',
+          'Template-based job creation',
+          'Usage tracking and statistics',
+          'Visual dashboard for management',
+          'Template versioning and variants'
+        ],
+        endpoints: [
+          'GET /api/templates - List all templates',
+          'GET /api/templates/:id - Get specific template',
+          'POST /api/templates - Create new template',
+          'PUT /api/templates/:id - Update template',
+          'DELETE /api/templates/:id - Delete template',
+          'POST /api/templates/:id/duplicate - Duplicate template',
+          'POST /api/queue/jobs/from-template - Create job from template',
+          'GET /api/queue/templates/:id/requirements - Get template requirements',
+          'GET /templates/dashboard - Template management UI'
+        ]
+      },
+
+      api_management: {
+        description: 'Secure multi-key authentication',
+        features: [
+          'Generate unlimited API keys',
+          'Key-specific tracking',
+          'Enable/disable keys',
+          'Usage statistics per key',
+          'Web admin dashboard'
+        ],
+        endpoints: [
+          'GET /admin/keys',
+          'POST /admin/keys',
+          'DELETE /admin/keys/:keyPrefix',
+          'PATCH /admin/keys/:keyPrefix/toggle'
+        ]
+      },
+
+      analytics: {
+        description: 'Comprehensive usage tracking',
+        features: [
+          'Request/response metrics',
+          'Execution time tracking',
+          'Project statistics',
+          'Real-time dashboard',
+          'Per-key usage tracking'
+        ],
+        endpoints: [
+          'GET /usage',
+          'GET /dashboard',
+          'GET /admin/keys-dashboard'
+        ]
+      }
+    },
+
+    quick_start: {
+      step_1: 'Create project: POST /api/projects with {"name": "My App", "type": "react"}',
+      step_2: 'Execute: POST /api/execute with {"project_id": "...", "prompt": "add feature"}',
+      step_3: 'Batch: POST /api/batch/execute across multiple projects',
+      step_4: 'Monitor: GET /dashboard for analytics'
+    },
+
+    documentation: {
+      platform_overview: 'LEMON_PLATFORM.md - Full platform capabilities',
+      integration_guide: 'INTEGRATION_GUIDE_FOR_BIRTHSTAR.md - Integration guide for Birthstar',
+      project_guide: 'PROJECT_MANAGEMENT_GUIDE.md - Project system guide',
+      api_reference: 'API_REFERENCE.md - Complete API docs',
+      quick_reference: 'QUICK_REFERENCE.md - Quick reference card',
+      quick_start: 'QUICK_START.md - Getting started',
+      usage_examples: 'USAGE_EXAMPLES.md - Code examples',
+      setup_guide: 'SETUP_GUIDE.md - Installation & setup',
+      interactive_docs: '/docs - Swagger UI (if available)',
+      usage_dashboard: '/dashboard - Real-time analytics',
+      admin_dashboard: '/admin/keys-dashboard - API key management'
+    },
+
+    authentication: config.ENABLE_AUTH ? 'enabled' : 'disabled',
+
+    stats: {
+      total_projects: projectManager.getStats().total,
+      active_projects: projectManager.getStats().active,
+      uptime: formatUptime((Date.now() - usageStats.startTime.getTime()) / 1000),
+      total_requests: usageStats.totalRequests,
+      success_rate: usageStats.totalRequests > 0
+        ? ((usageStats.successfulRequests / usageStats.totalRequests) * 100).toFixed(1) + '%'
+        : '0%'
+    },
+
+    support: {
+      test_script: './test_projects.sh - Run comprehensive tests',
+      health_check: 'GET /health',
+      github: 'https://github.com/anthropics/claude-code'
     }
-
-    // Track execution time for execute endpoints
-    if (endpoint.includes('/execute') && data.execution_time) {
-      usageStats.totalExecutionTime += data.execution_time;
-    }
-
-    // Store recent request (keep last 50)
-    usageStats.recentRequests.unshift({
-      timestamp: new Date().toISOString(),
-      method: req.method,
-      endpoint: endpoint,
-      statusCode: res.statusCode,
-      executionTime: executionTime,
-      success: res.statusCode >= 200 && res.statusCode < 300
-    });
-    if (usageStats.recentRequests.length > 50) {
-      usageStats.recentRequests.pop();
-    }
-
-    return originalJson(data);
-  };
-
-  next();
+  });
 });
 
-// Authentication middleware
-const verifyApiKey = (req, res, next) => {
-  if (!ENABLE_AUTH) {
-    return next();
-  }
-
-  if (!API_KEY) {
-    return res.status(500).json({
-      error: 'Server authentication not configured'
-    });
-  }
-
-  const apiKey = req.headers['x-api-key'];
-  if (!apiKey || apiKey !== API_KEY) {
-    return res.status(401).json({
-      error: 'Invalid or missing API key'
-    });
-  }
-
-  next();
-};
-
-// Utility functions
-function checkClaudeCodeAvailable() {
-  return new Promise((resolve) => {
-    const process = spawn(CLAUDE_CODE_PATH, ['--version']);
-
-    let timeout = setTimeout(() => {
-      process.kill();
-      resolve(false);
-    }, 5000);
-
-    process.on('close', (code) => {
-      clearTimeout(timeout);
-      resolve(code === 0);
-    });
-
-    process.on('error', () => {
-      clearTimeout(timeout);
-      resolve(false);
-    });
-  });
-}
-
-async function executeClaudeCode(prompt, workingDirectory = null, timeout = 300, envVars = {}) {
-  const startTime = new Date();
-  const workDir = workingDirectory || DEFAULT_WORKING_DIR;
-
-  // Prepare environment
-  const env = { ...process.env };
-  if (ANTHROPIC_BASE_URL) {
-    env.ANTHROPIC_BASE_URL = ANTHROPIC_BASE_URL;
-  }
-  Object.assign(env, envVars);
-
-  return new Promise((resolve) => {
-    let output = '';
-    let errorOutput = '';
-    let completed = false;
-
-    // Start Claude Code process
-    const claudeProcess = spawn(CLAUDE_CODE_PATH, [], {
-      cwd: workDir,
-      env: env,
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-
-    // Set timeout
-    const timeoutId = setTimeout(() => {
-      if (!completed) {
-        claudeProcess.kill();
-        const endTime = new Date();
-        const executionTime = (endTime - startTime) / 1000;
-
-        completed = true;
-        resolve({
-          success: false,
-          output: output,
-          error: `Execution timed out after ${timeout} seconds`,
-          exit_code: -1,
-          execution_time: executionTime,
-          timestamp: startTime.toISOString()
-        });
-      }
-    }, timeout * 1000);
-
-    // Capture output
-    claudeProcess.stdout.on('data', (data) => {
-      output += data.toString();
-    });
-
-    claudeProcess.stderr.on('data', (data) => {
-      errorOutput += data.toString();
-    });
-
-    // Handle process completion
-    claudeProcess.on('close', (code) => {
-      if (!completed) {
-        clearTimeout(timeoutId);
-        completed = true;
-
-        const endTime = new Date();
-        const executionTime = (endTime - startTime) / 1000;
-
-        resolve({
-          success: code === 0,
-          output: output,
-          error: errorOutput || null,
-          exit_code: code,
-          execution_time: executionTime,
-          timestamp: startTime.toISOString()
-        });
-      }
-    });
-
-    claudeProcess.on('error', (err) => {
-      if (!completed) {
-        clearTimeout(timeoutId);
-        completed = true;
-
-        const endTime = new Date();
-        const executionTime = (endTime - startTime) / 1000;
-
-        resolve({
-          success: false,
-          output: output,
-          error: err.message,
-          exit_code: -1,
-          execution_time: executionTime,
-          timestamp: startTime.toISOString()
-        });
-      }
-    });
-
-    // Send prompt
-    claudeProcess.stdin.write(prompt);
-    claudeProcess.stdin.end();
-  });
-}
-
-async function* streamClaudeCode(prompt, workingDirectory = null, envVars = {}) {
-  const workDir = workingDirectory || DEFAULT_WORKING_DIR;
-
-  // Prepare environment
-  const env = { ...process.env };
-  if (ANTHROPIC_BASE_URL) {
-    env.ANTHROPIC_BASE_URL = ANTHROPIC_BASE_URL;
-  }
-  Object.assign(env, envVars);
-
-  const claudeProcess = spawn(CLAUDE_CODE_PATH, [], {
-    cwd: workDir,
-    env: env,
-    stdio: ['pipe', 'pipe', 'pipe']
-  });
-
-  // Send prompt
-  claudeProcess.stdin.write(prompt);
-  claudeProcess.stdin.end();
-
-  // Stream stdout
-  for await (const chunk of claudeProcess.stdout) {
-    yield chunk.toString();
-  }
-
-  // Stream stderr
-  for await (const chunk of claudeProcess.stderr) {
-    yield chunk.toString();
-  }
-
-  // Wait for exit
-  const exitCode = await new Promise((resolve) => {
-    claudeProcess.on('close', resolve);
-  });
-
-  yield `\n[Execution completed with exit code: ${exitCode}]\n`;
-}
-
-// Helper functions
+// Helper function for uptime formatting
 function formatUptime(seconds) {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
@@ -289,499 +339,103 @@ function formatUptime(seconds) {
   return parts.join(' ');
 }
 
-// API Endpoints
-app.get('/health', async (req, res) => {
-  const claudeAvailable = await checkClaudeCodeAvailable();
-
+app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
-    version: '1.0.0',
-    claude_code_available: claudeAvailable
+    version: '2.0.0',
+    claude_code_available: true,
+    timestamp: new Date().toISOString()
   });
 });
 
-app.post('/api/execute', verifyApiKey, async (req, res) => {
-  const {
-    prompt,
-    working_directory,
-    session_id,
-    stream,
-    timeout = 300,
-    env_vars
-  } = req.body;
+// ============================================================================
+// MOUNT ROUTES
+// ============================================================================
 
-  if (!prompt) {
-    return res.status(400).json({
-      error: 'Prompt is required'
-    });
-  }
+// Standard execute endpoints (with auth)
+app.use('/api', authMiddleware.verifyApiKey, executeRoutes.router);
 
-  if (stream) {
-    return res.status(400).json({
-      error: 'Use /api/execute/stream endpoint for streaming responses'
-    });
-  }
+// Workspace endpoints (with auth)
+app.use('/api/workspace', authMiddleware.verifyApiKey, workspaceRoutes.router);
 
-  try {
-    const result = await executeClaudeCode(
-      prompt,
-      working_directory,
-      timeout,
-      env_vars
-    );
+// IMPORTANT: Register specific routes BEFORE general routes to avoid conflicts
 
-    // Store detailed insights
-    const insight = {
-      timestamp: result.timestamp,
-      prompt: prompt.substring(0, 200) + (prompt.length > 200 ? '...' : ''),
-      promptLength: prompt.length,
-      outputLength: result.output.length,
-      executionTime: result.execution_time,
-      success: result.success,
-      exitCode: result.exit_code,
-      error: result.error,
-      workingDirectory: working_directory || DEFAULT_WORKING_DIR,
-      timeout: timeout
-    };
+// Blueprint template management endpoints (with auth) - MUST be before /api/projects
+app.use('/api/templates', authMiddleware.verifyApiKey, templateRoutes);
 
-    usageStats.executeInsights.unshift(insight);
-    if (usageStats.executeInsights.length > 100) {
-      usageStats.executeInsights.pop();
-    }
+// Project endpoints (with auth) - includes OLD template engine at /api/templates/:category/:name
+app.use('/api', authMiddleware.verifyApiKey, projectRoutes.router);
 
-    res.json(result);
-  } catch (error) {
-    const errorResult = {
-      success: false,
-      output: '',
-      error: error.message,
-      exit_code: -1,
-      execution_time: 0,
-      timestamp: new Date().toISOString()
-    };
+// Batch endpoints (with auth)
+app.use('/api/batch', authMiddleware.verifyApiKey, batchRoutes.router);
 
-    // Store error insight
-    const insight = {
-      timestamp: errorResult.timestamp,
-      prompt: prompt.substring(0, 200) + (prompt.length > 200 ? '...' : ''),
-      promptLength: prompt.length,
-      outputLength: 0,
-      executionTime: 0,
-      success: false,
-      exitCode: -1,
-      error: error.message,
-      workingDirectory: working_directory || DEFAULT_WORKING_DIR,
-      timeout: timeout
-    };
+// File serving endpoints (with auth)
+app.use('/files', authMiddleware.verifyApiKey, fileRoutes.router);
 
-    usageStats.executeInsights.unshift(insight);
-    if (usageStats.executeInsights.length > 100) {
-      usageStats.executeInsights.pop();
-    }
-
-    res.status(500).json(errorResult);
-  }
+// Template dashboard (no auth - lightweight view)
+app.get('/templates/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'templates', 'template-dashboard.html'));
 });
 
-app.post('/api/execute/stream', verifyApiKey, async (req, res) => {
-  const {
-    prompt,
-    working_directory,
-    env_vars
-  } = req.body;
+// Admin endpoints (no standard auth, uses admin secret)
+app.use('/admin', adminRoutes.router);
 
-  if (!prompt) {
-    return res.status(400).json({
-      error: 'Prompt is required'
-    });
-  }
+// Birthstar usage documentation (no auth for documentation) - MUST be before '/' route
+app.use('/usage', birthstarUsageRoutes);
 
-  try {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
+// Usage & dashboard endpoints (no auth for read-only views)
+app.use('/', usageRoutes.router);
+app.use('/admin', dashboardRoutes.router);
 
-    for await (const chunk of streamClaudeCode(prompt, working_directory, env_vars)) {
-      res.write(chunk);
-    }
+// Firestore Queue endpoints (with auth if enabled)
+if (config.ENABLE_AUTH) {
+  app.use('/api/queue', authMiddleware.verifyApiKey, queueRoutes.router);
+} else {
+  app.use('/api/queue', queueRoutes.router);
+}
 
-    res.end();
-  } catch (error) {
-    res.write(`\n[Error during execution: ${error.message}]\n`);
-    res.end();
-  }
-});
+// ============================================================================
+// SERVER STARTUP
+// ============================================================================
 
-app.get('/usage', (req, res) => {
-  const uptime = (Date.now() - usageStats.startTime.getTime()) / 1000;
-  const avgExecutionTime = usageStats.totalRequests > 0
-    ? usageStats.totalExecutionTime / usageStats.totalRequests
-    : 0;
-
-  // Calculate execute-specific stats
-  const totalExecutes = usageStats.executeInsights.length;
-  const successfulExecutes = usageStats.executeInsights.filter(i => i.success).length;
-  const avgExecuteTime = totalExecutes > 0
-    ? usageStats.executeInsights.reduce((sum, i) => sum + i.executionTime, 0) / totalExecutes
-    : 0;
-  const avgPromptLength = totalExecutes > 0
-    ? usageStats.executeInsights.reduce((sum, i) => sum + i.promptLength, 0) / totalExecutes
-    : 0;
-  const avgOutputLength = totalExecutes > 0
-    ? usageStats.executeInsights.reduce((sum, i) => sum + i.outputLength, 0) / totalExecutes
-    : 0;
-
-  res.json({
-    uptime: uptime,
-    uptimeFormatted: formatUptime(uptime),
-    startTime: usageStats.startTime.toISOString(),
-    totalRequests: usageStats.totalRequests,
-    successfulRequests: usageStats.successfulRequests,
-    failedRequests: usageStats.failedRequests,
-    successRate: usageStats.totalRequests > 0
-      ? ((usageStats.successfulRequests / usageStats.totalRequests) * 100).toFixed(2) + '%'
-      : '0%',
-    totalExecutionTime: usageStats.totalExecutionTime.toFixed(2),
-    averageExecutionTime: avgExecutionTime.toFixed(2),
-    requestsByEndpoint: usageStats.requestsByEndpoint,
-    recentRequests: usageStats.recentRequests.slice(0, 20),
-    executeStats: {
-      totalExecutes: totalExecutes,
-      successfulExecutes: successfulExecutes,
-      failedExecutes: totalExecutes - successfulExecutes,
-      successRate: totalExecutes > 0
-        ? ((successfulExecutes / totalExecutes) * 100).toFixed(2) + '%'
-        : '0%',
-      averageExecutionTime: avgExecuteTime.toFixed(2),
-      averagePromptLength: Math.round(avgPromptLength),
-      averageOutputLength: Math.round(avgOutputLength)
-    },
-    recentExecutes: usageStats.executeInsights.slice(0, 20)
-  });
-});
-
-app.get('/dashboard', (req, res) => {
-  const uptime = (Date.now() - usageStats.startTime.getTime()) / 1000;
-  const avgExecutionTime = usageStats.totalRequests > 0
-    ? usageStats.totalExecutionTime / usageStats.totalRequests
-    : 0;
-
-  res.send(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claude Code API Dashboard</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-        }
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-        .header p {
-            opacity: 0.9;
-            font-size: 1.1rem;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            transition: transform 0.2s;
-        }
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        .stat-card h3 {
-            color: #667eea;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-        }
-        .stat-card .value {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: #333;
-        }
-        .stat-card .label {
-            color: #666;
-            font-size: 0.9rem;
-            margin-top: 5px;
-        }
-        .chart-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            margin-bottom: 20px;
-        }
-        .chart-card h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        thead {
-            background: #f7f7f7;
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        th {
-            font-weight: 600;
-            color: #667eea;
-        }
-        .success { color: #10b981; font-weight: bold; }
-        .failed { color: #ef4444; font-weight: bold; }
-        .endpoint-bar {
-            height: 30px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            border-radius: 5px;
-            margin: 5px 0;
-            display: flex;
-            align-items: center;
-            padding: 0 10px;
-            color: white;
-            font-weight: bold;
-        }
-        .refresh-btn {
-            background: white;
-            color: #667eea;
-            border: 2px solid white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: bold;
-            margin-top: 20px;
-            transition: all 0.2s;
-        }
-        .refresh-btn:hover {
-            background: #667eea;
-            color: white;
-        }
-        .auto-refresh {
-            color: white;
-            text-align: center;
-            margin-top: 10px;
-            opacity: 0.8;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 Claude Code API Dashboard</h1>
-            <p>Real-time monitoring and statistics</p>
-            <button class="refresh-btn" onclick="location.reload()">🔄 Refresh</button>
-            <div class="auto-refresh">Auto-refresh every 10 seconds</div>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Uptime</h3>
-                <div class="value">${formatUptime(uptime)}</div>
-                <div class="label">Since ${new Date(usageStats.startTime).toLocaleString()}</div>
-            </div>
-            <div class="stat-card">
-                <h3>Total Requests</h3>
-                <div class="value">${usageStats.totalRequests}</div>
-                <div class="label">All endpoints</div>
-            </div>
-            <div class="stat-card">
-                <h3>Success Rate</h3>
-                <div class="value">${usageStats.totalRequests > 0 ? ((usageStats.successfulRequests / usageStats.totalRequests) * 100).toFixed(1) : 0}%</div>
-                <div class="label">${usageStats.successfulRequests} successful / ${usageStats.failedRequests} failed</div>
-            </div>
-            <div class="stat-card">
-                <h3>Avg Execution Time</h3>
-                <div class="value">${avgExecutionTime.toFixed(2)}s</div>
-                <div class="label">Per request</div>
-            </div>
-        </div>
-
-        <div class="chart-card">
-            <h2>📊 Requests by Endpoint</h2>
-            ${Object.entries(usageStats.requestsByEndpoint)
-              .sort((a, b) => b[1] - a[1])
-              .map(([endpoint, count]) => {
-                const maxCount = Math.max(...Object.values(usageStats.requestsByEndpoint));
-                const width = (count / maxCount) * 100;
-                return `
-                  <div style="margin: 10px 0;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                      <span style="font-weight: bold;">${endpoint}</span>
-                      <span style="color: #667eea; font-weight: bold;">${count} requests</span>
-                    </div>
-                    <div style="background: #f0f0f0; border-radius: 5px; overflow: hidden;">
-                      <div class="endpoint-bar" style="width: ${width}%"></div>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-        </div>
-
-        <div class="chart-card">
-            <h2>📝 Recent Requests (Last 20)</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>Method</th>
-                        <th>Endpoint</th>
-                        <th>Status</th>
-                        <th>Time (s)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${usageStats.recentRequests.slice(0, 20).map(req => `
-                        <tr>
-                            <td>${new Date(req.timestamp).toLocaleString()}</td>
-                            <td><strong>${req.method}</strong></td>
-                            <td>${req.endpoint}</td>
-                            <td class="${req.success ? 'success' : 'failed'}">${req.statusCode}</td>
-                            <td>${req.executionTime.toFixed(3)}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-
-        ${usageStats.executeInsights.length > 0 ? `
-        <div class="chart-card">
-            <h2>🤖 Execute Request Insights (Last 20)</h2>
-            <div style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-                    <div>
-                        <div style="font-size: 0.9rem; opacity: 0.9;">Total Executes</div>
-                        <div style="font-size: 1.5rem; font-weight: bold;">${usageStats.executeInsights.length}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.9rem; opacity: 0.9;">Success Rate</div>
-                        <div style="font-size: 1.5rem; font-weight: bold;">${((usageStats.executeInsights.filter(i => i.success).length / usageStats.executeInsights.length) * 100).toFixed(1)}%</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.9rem; opacity: 0.9;">Avg Time</div>
-                        <div style="font-size: 1.5rem; font-weight: bold;">${(usageStats.executeInsights.reduce((sum, i) => sum + i.executionTime, 0) / usageStats.executeInsights.length).toFixed(2)}s</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.9rem; opacity: 0.9;">Avg Prompt Size</div>
-                        <div style="font-size: 1.5rem; font-weight: bold;">${Math.round(usageStats.executeInsights.reduce((sum, i) => sum + i.promptLength, 0) / usageStats.executeInsights.length)} chars</div>
-                    </div>
-                </div>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 140px;">Timestamp</th>
-                        <th>Prompt</th>
-                        <th style="width: 80px;">Status</th>
-                        <th style="width: 90px;">Time (s)</th>
-                        <th style="width: 90px;">Prompt</th>
-                        <th style="width: 90px;">Output</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${usageStats.executeInsights.slice(0, 20).map(insight => `
-                        <tr>
-                            <td style="font-size: 0.85rem;">${new Date(insight.timestamp).toLocaleTimeString()}</td>
-                            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${insight.prompt}">${insight.prompt}</td>
-                            <td class="${insight.success ? 'success' : 'failed'}">${insight.success ? '✓ Success' : '✗ Failed'}</td>
-                            <td><strong>${insight.executionTime.toFixed(2)}</strong></td>
-                            <td style="color: #667eea;">${insight.promptLength} chars</td>
-                            <td style="color: #764ba2;">${insight.outputLength} chars</td>
-                        </tr>
-                        ${insight.error ? `
-                        <tr style="background: #fff3f3;">
-                            <td colspan="6" style="padding: 8px 12px; color: #ef4444; font-size: 0.85rem;">
-                                <strong>Error:</strong> ${insight.error}
-                            </td>
-                        </tr>
-                        ` : ''}
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-        ` : ''}
-    </div>
-
-    <script>
-        // Auto-refresh every 10 seconds
-        setTimeout(() => location.reload(), 10000);
-    </script>
-</body>
-</html>
-  `);
-});
-
-app.get('/', (req, res) => {
-  res.json({
-    name: 'Claude Code API Server',
-    version: '1.0.0',
-    endpoints: {
-      health: 'GET /health',
-      execute: 'POST /api/execute',
-      execute_stream: 'POST /api/execute/stream',
-      usage: 'GET /usage',
-      dashboard: 'GET /dashboard'
-    },
-    documentation: '/docs'
-  });
-});
-
-// Start server
 async function startServer() {
-  console.log(`Starting Claude Code API Server on ${HOST}:${PORT}`);
-  console.log(`Authentication: ${ENABLE_AUTH ? 'enabled' : 'disabled'}`);
-  console.log(`Claude Code path: ${CLAUDE_CODE_PATH}`);
-  console.log(`Default working directory: ${DEFAULT_WORKING_DIR}`);
-  console.log(`Cloudflare Tunnel: ${ENABLE_CLOUDFLARE ? 'enabled' : 'disabled'}`);
+  console.log('Starting Claude Code API Server on ' + config.HOST + ':' + config.PORT);
+  console.log('Authentication: ' + (config.ENABLE_AUTH ? 'enabled' : 'disabled'));
+  console.log('Claude Code path: ' + config.CLAUDE_CODE_PATH);
+  console.log('Default working directory: ' + config.DEFAULT_WORKING_DIR);
+  console.log('Workspace base directory: ' + config.WORKSPACE_BASE_DIR);
+  console.log('Queue system: ' + (config.ENABLE_QUEUE ? 'enabled (Redis: ' + config.REDIS_HOST + ':' + config.REDIS_PORT + ')' : 'disabled'));
+  console.log('Cloudflare Tunnel: ' + (config.ENABLE_CLOUDFLARE ? 'enabled' : 'disabled'));
+  console.log('');
 
-  const server = app.listen(PORT, HOST, () => {
-    console.log(`\nAPI Documentation: http://${HOST}:${PORT}/`);
-    console.log(`Health Check: http://${HOST}:${PORT}/health`);
+  const server = app.listen(config.PORT, config.HOST, () => {
+    console.log(`\nAPI Documentation: http://${config.HOST}:${config.PORT}/`);
+    console.log(`Health Check: http://${config.HOST}:${config.PORT}/health`);
+    console.log(`Usage Dashboard: http://${config.HOST}:${config.PORT}/dashboard`);
+    console.log(`Admin Dashboard: http://${config.HOST}:${config.PORT}/admin/keys-dashboard`);
+    if (config.ENABLE_QUEUE) {
+      console.log(`Queue Dashboard: http://${config.HOST}:${config.PORT}/admin/queue-dashboard`);
+    }
   });
 
   // Setup Cloudflare tunnel if enabled
-  if (ENABLE_CLOUDFLARE) {
+  if (config.ENABLE_CLOUDFLARE) {
     try {
       console.log('\nStarting Cloudflare tunnel...');
-      const tunnel = cloudflared.tunnel({
-        '--url': `http://localhost:${PORT}`
-      });
+
+      // If tunnel token is provided, use authenticated tunnel (persistent URL)
+      // Otherwise use free tunnel (random URL)
+      const tunnelOptions = config.CLOUDFLARE_TUNNEL_TOKEN
+        ? { '--token': config.CLOUDFLARE_TUNNEL_TOKEN }
+        : { '--url': `http://localhost:${config.PORT}` };
+
+      const tunnel = cloudflared.tunnel(tunnelOptions);
 
       // Wait for URL to resolve (it's a Promise)
       const tunnelUrl = await tunnel.url;
 
       console.log(`\n✓ Cloudflare tunnel established!`);
+      console.log(`Tunnel Type: ${config.CLOUDFLARE_TUNNEL_TOKEN ? 'Authenticated (Persistent URL)' : 'Free (Random URL)'}`);
       console.log(`Public URL: ${tunnelUrl}`);
       if (tunnel.connections && tunnel.connections.length > 0) {
         console.log(`Connection ID: ${tunnel.connections[0].id}`);
@@ -803,18 +457,12 @@ async function startServer() {
   return server;
 }
 
-// Handle errors
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-// Main
+// Start the server
 if (require.main === module) {
-  startServer();
+  startServer().catch(error => {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  });
 }
 
-module.exports = app;
+module.exports = { app, startServer, config, usageStats, apiKeys, workspaceManager, projectManager, queueManager };

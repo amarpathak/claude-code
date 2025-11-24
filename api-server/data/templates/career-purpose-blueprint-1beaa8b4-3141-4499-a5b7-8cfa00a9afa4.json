@@ -1,0 +1,196 @@
+{
+  "id": "1beaa8b4-3141-4499-a5b7-8cfa00a9afa4",
+  "name": "Career & Purpose Blueprint",
+  "slug": "career-purpose-blueprint",
+  "version": "1.0.0",
+  "type": "career",
+  "category": "blueprint",
+  "description": "Professional path guidance, career timing, and life purpose discovery",
+  "structure": {
+    "title_pattern": "{{topic}} Blueprint for {{user_name}}",
+    "word_count": 1500,
+    "sections": [
+      {
+        "heading": "Your Career Path",
+        "purpose": "Identify natural career inclinations",
+        "word_count": 350,
+        "key_placements": [
+          "10th house",
+          "Sun",
+          "Saturn",
+          "Midheaven"
+        ],
+        "points_to_cover": [
+          "Natural career strengths",
+          "Suitable professions",
+          "Career trajectory"
+        ],
+        "questions_to_answer": [
+          "What career path suits me?",
+          "What are my professional strengths?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Professional Strengths & Skills",
+        "purpose": "Highlight unique talents",
+        "word_count": 300,
+        "key_placements": [
+          "Mercury",
+          "Jupiter",
+          "3rd house",
+          "6th house"
+        ],
+        "points_to_cover": [
+          "Communication skills",
+          "Leadership abilities",
+          "Technical aptitudes"
+        ],
+        "questions_to_answer": [
+          "What are my unique talents?",
+          "How can I leverage my skills?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Career Timing & Opportunities",
+        "purpose": "Provide timing for career moves",
+        "word_count": 350,
+        "key_placements": [
+          "Current dasha",
+          "Saturn transits",
+          "10th house lord"
+        ],
+        "points_to_cover": [
+          "Best timing for career changes",
+          "Promotion periods",
+          "Business opportunities"
+        ],
+        "questions_to_answer": [
+          "When should I make a career move?",
+          "When will success come?"
+        ],
+        "subsections": []
+      },
+      {
+        "heading": "Life Purpose & Direction",
+        "purpose": "Connect career to deeper purpose",
+        "word_count": 300,
+        "key_placements": [
+          "Sun",
+          "North Node",
+          "9th house"
+        ],
+        "points_to_cover": [
+          "Soul mission",
+          "How career serves purpose",
+          "Fulfillment path"
+        ],
+        "questions_to_answer": [
+          "What is my life purpose?",
+          "How does my career align with my purpose?"
+        ],
+        "subsections": []
+      }
+    ]
+  },
+  "follow_up_questions": [
+    {
+      "id": "f7bed37f-e766-4fbe-add0-9c0db51da1e6",
+      "question": "What is your current career situation?",
+      "type": "single_choice",
+      "options": [
+        "Employed",
+        "Self-employed",
+        "Between jobs",
+        "Student",
+        "Career break"
+      ],
+      "required": true,
+      "condition": null,
+      "weight": 10,
+      "purpose": "Tailor career advice appropriately"
+    },
+    {
+      "id": "ddbae4a6-542f-47f0-8951-fe0f173b2f7b",
+      "question": "What aspect of your career needs attention?",
+      "type": "single_choice",
+      "options": [
+        "Finding direction",
+        "Changing careers",
+        "Advancing in current role",
+        "Work-life balance",
+        "Starting a business"
+      ],
+      "required": false,
+      "condition": null,
+      "weight": 9,
+      "purpose": "Focus on specific career challenge"
+    }
+  ],
+  "context_data": {
+    "required_placements": {
+      "planets": [
+        "Sun",
+        "Saturn",
+        "Jupiter"
+      ],
+      "houses": [
+        10,
+        6
+      ],
+      "aspects": [],
+      "dashas": [
+        "current",
+        "upcoming"
+      ],
+      "yogas": [],
+      "nakshatras": []
+    },
+    "user_preferences": {
+      "tone": "balanced",
+      "focus": "balanced",
+      "timeframe": "both",
+      "depth": "standard",
+      "language_style": "simple"
+    },
+    "reading_params": {
+      "include_remedies": true,
+      "include_timing": true,
+      "include_examples": false,
+      "include_comparisons": false,
+      "include_warnings": true
+    }
+  },
+  "prompts": {
+    "template_generation": "",
+    "expansion": "",
+    "system_context": "",
+    "examples": []
+  },
+  "quality_criteria": {
+    "min_word_count": 1200,
+    "max_word_count": 2000,
+    "required_keywords": [],
+    "required_placements": [],
+    "tone_requirements": [],
+    "structure_requirements": []
+  },
+  "metadata": {
+    "created_at": "2025-11-24T18:42:21.686Z",
+    "updated_at": "2025-11-24T18:42:21.686Z",
+    "created_by": "system",
+    "tags": [
+      "career",
+      "purpose",
+      "professional",
+      "astrology"
+    ],
+    "usage_count": 0,
+    "average_rating": 0,
+    "is_active": true,
+    "is_public": false
+  },
+  "parent_template_id": null,
+  "variants": []
+}
