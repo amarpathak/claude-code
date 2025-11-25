@@ -733,15 +733,17 @@ app.post('/users/:userId', async (req, res) => {
     };
 
     const job = await queueManager.addJob(jobData);
-    console.log(`✓ Queued user registration job ${job.id} for ${userId}`);
+    console.log(`✓ Queued user registration job ${job.job_id} for ${userId}`);
 
     res.json({
       success: true,
-      job_id: job.id,
+      job_id: job.job_id,
+      status: job.status,
       user_id: userId,
       message: 'User registration job queued. Worker will create folder and setup project.',
       has_campaign_seed: !!campaign_seed,
-      status_url: `/jobs/${job.id}`
+      created_at: job.created_at,
+      status_url: `/jobs/${job.job_id}`
     });
 
   } catch (error) {
